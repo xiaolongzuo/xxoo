@@ -70,74 +70,72 @@ public class DefaultConfigurableXmlBuilder extends AbstractXmlBuilder{
 				insertLine(stringBuffer);
 			}
 			insertEndTag(stringBuffer, tagName);
-		}else {
-			Field[] fields = clazz.getDeclaredFields();
-			insertHeadTag(stringBuffer, tagName);
-			if (needLine(format)) {
-				insertLine(stringBuffer);
-			}
-			for (int i = 0; i < fields.length; i++) {
-				Field field = fields[i];
-				if (Modifier.isStatic(field.getModifiers()) || Modifier.isFinal(field.getModifiers())) {
+			return;
+		}
+		Field[] fields = clazz.getDeclaredFields();
+		insertHeadTag(stringBuffer, tagName);
+		if (needLine(format)) {
+			insertLine(stringBuffer);
+		}
+		for (int i = 0; i < fields.length; i++) {
+			Field field = fields[i];
+			field.setAccessible(true);
+			Object fieldValue = field.get(object);
+			if (Commons.isNull(fieldValue) || Modifier.isStatic(field.getModifiers()) || Modifier.isFinal(field.getModifiers())) {
+				if (i == 0) {
 					deleteLine(stringBuffer);
-					continue;
 				}
-				field.setAccessible(true);
-				Object fieldValue = field.get(object);
-				if (fieldValue == null) {
-					continue;
-				}
-				if (needLine(format) && i != 0) {
-					insertLine(stringBuffer);
-				}
-				if (needTab(format)) {
-					insertTab(stringBuffer, currentLevel);
-				}
-				if (Reflects.isComplexType(field.getType()) && !Iterable.class.isAssignableFrom(field.getType())) {
-					appendRecursion(stringBuffer,fieldValue,field.getName(),currentLevel + 1);
-				}else if (Iterable.class.isAssignableFrom(field.getType())) {
-					final int currentArrayLevel = currentLevel + 1;
-					insertHeadTag(stringBuffer, field.getName());
-					if (needLine(format)) {
-						insertLine(stringBuffer);
-					}
-					Class<?> iterableGenericType = Reflects.getArrayGenericType(field);
-					int count = 0;
-					for (Object tempObject : ((Iterable)fieldValue)) {
-						if (needLine(format) && count++ != 0) {
-							insertLine(stringBuffer);
-						}
-						if (needTab(format)) {
-							insertTab(stringBuffer, currentArrayLevel);
-						}
-						if (!Reflects.isComplexType(iterableGenericType)) {
-							insertSimpleType(stringBuffer,iterableGenericType.getSimpleName(), field, tempObject);
-						}else {
-							appendRecursion(stringBuffer,tempObject,tempObject.getClass().getSimpleName(),currentArrayLevel + 1);
-						}
-					}
-					if (needLine(format)) {
-						insertLine(stringBuffer);
-					}
-					if (needTab(format)) {
-						insertTab(stringBuffer, currentArrayLevel - 1);
-					}
-					insertEndTag(stringBuffer, field.getName());
-				}else {
-					insertSimpleType(stringBuffer,field.getName(), field, fieldValue);
-				}
+				continue;
 			}
+			appendHead(stringBuffer, i, currentLevel);
+			if (!Iterable.class.isAssignableFrom(field.getType())) {
+				if (Reflects.isComplexType(field.getType())) {
+					appendRecursion(stringBuffer,fieldValue,field.getName(),currentLevel + 1);
+				}else {
+					insertSimpleType(stringBuffer, field, field.getName(), fieldValue);
+				}
+				continue;
+			}
+			final int currentArrayLevel = currentLevel + 1;
+			insertHeadTag(stringBuffer, field.getName());
 			if (needLine(format)) {
 				insertLine(stringBuffer);
 			}
-			if (needTab(format)) {
-				insertTab(stringBuffer, currentLevel - 1);
+			Class<?> iterableGenericType = Reflects.getArrayGenericType(field);
+			int index = 0;
+			for (Object tempObject : ((Iterable)fieldValue)) {
+				appendHead(stringBuffer, index++, currentArrayLevel);
+				if (Reflects.isComplexType(iterableGenericType)) {
+					appendRecursion(stringBuffer,tempObject,tempObject.getClass().getSimpleName(),currentArrayLevel + 1);
+				}else {
+					insertSimpleType(stringBuffer, field, iterableGenericType.getSimpleName(), tempObject);
+				}
 			}
-			insertEndTag(stringBuffer, tagName);
+			appendEnd(stringBuffer, field.getName(), currentArrayLevel);
+		}
+		appendEnd(stringBuffer, tagName, currentLevel);
+	}
+	
+	private void appendHead(final StringBuffer stringBuffer, int index, int currentLevel){
+		if (needLine(format) && index != 0) {
+			insertLine(stringBuffer);
+		}
+		if (needTab(format)) {
+			insertTab(stringBuffer, currentLevel);
 		}
 	}
 	
-	private void insertSimpleType(final StringBuffer stringBuffer,String tagName,Field field,Object fieldValue){
+	private void appendEnd(final StringBuffer stringBuffer,String tagName, int currentLevel){
+		if (needLine(format)) {
+			insertLine(stringBuffer);
+		}
+		if (needTab(format)) {
+			insertTab(stringBuffer, currentLevel - 1);
+		}
+		insertEndTag(stringBuffer, tagName);
+	}
+	
+	private void insertSimpleType(final StringBuffer stringBuffer,Field field,String tagName,Object fieldValue){
 		stringBuffer.append(TAG_HEAD_PREFIX).append(tagName).append(TAG_SUFFIX);
 		if (field.getType() == Date.class) {
 			stringBuffer.append(DateAnnotationHandler.handle(field, fieldValue));
