@@ -74,7 +74,7 @@ public class DomConfigurableXmlParser extends AbstractXmlParser {
 		}
 	}
 
-	<T> T parseRecursion(Class<T> clazz,Node root) throws IllegalArgumentException, IllegalAccessException, InstantiationException, ParseException, SecurityException, NoSuchMethodException, InvocationTargetException{
+	private <T> T parseRecursion(Class<T> clazz,Node root) throws IllegalArgumentException, IllegalAccessException, InstantiationException, ParseException, SecurityException, NoSuchMethodException, InvocationTargetException{
 		if (Commons.isNull(clazz) || !Reflects.isComplexType(clazz)) {
 			return null;
 		}

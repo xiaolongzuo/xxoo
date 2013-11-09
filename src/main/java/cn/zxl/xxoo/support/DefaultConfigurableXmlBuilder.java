@@ -1,6 +1,7 @@
 package cn.zxl.xxoo.support;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.Date;
 
 import cn.zxl.xxoo.annotation.DateAnnotationHandler;
@@ -43,7 +44,7 @@ public class DefaultConfigurableXmlBuilder extends AbstractXmlBuilder{
     }
 
 	public void appendBody(final StringBuffer stringBuffer, final Object object){
-		if (object == null) {
+		if (Commons.isNull(object)) {
 			return;
 		}
 		try {
@@ -52,10 +53,12 @@ public class DefaultConfigurableXmlBuilder extends AbstractXmlBuilder{
 			throw new XmlBuildException("xml构建异常，此异常是由于采用反射获取属性中的值时发现参数不合法，请仔细检查你传入的对象。",e);
 		} catch (IllegalAccessException e) {
 			throw new XmlBuildException("xml构建异常，此异常是由于采用反射获取属性中的值时发现访问被禁止，请仔细检查你传入的对象的属性都可以正常访问。",e);
+		} catch (Exception e) {
+			throw new XmlBuildException(e);
 		}
 	}
 	
-	void appendRecursion(final StringBuffer stringBuffer,Object object,String tagName,int level) throws IllegalArgumentException, IllegalAccessException{
+	private void appendRecursion(final StringBuffer stringBuffer,Object object,String tagName,int level) throws IllegalArgumentException, IllegalAccessException{
 		if (Commons.isNull(object)) {
 			return;
 		}
@@ -75,6 +78,10 @@ public class DefaultConfigurableXmlBuilder extends AbstractXmlBuilder{
 			}
 			for (int i = 0; i < fields.length; i++) {
 				Field field = fields[i];
+				if (Modifier.isStatic(field.getModifiers()) || Modifier.isFinal(field.getModifiers())) {
+					deleteLine(stringBuffer);
+					continue;
+				}
 				field.setAccessible(true);
 				Object fieldValue = field.get(object);
 				if (fieldValue == null) {
@@ -130,7 +137,7 @@ public class DefaultConfigurableXmlBuilder extends AbstractXmlBuilder{
 		}
 	}
 	
-	void insertSimpleType(final StringBuffer stringBuffer,String tagName,Field field,Object fieldValue){
+	private void insertSimpleType(final StringBuffer stringBuffer,String tagName,Field field,Object fieldValue){
 		stringBuffer.append(TAG_HEAD_PREFIX).append(tagName).append(TAG_SUFFIX);
 		if (field.getType() == Date.class) {
 			stringBuffer.append(DateAnnotationHandler.handle(field, fieldValue));
@@ -140,32 +147,39 @@ public class DefaultConfigurableXmlBuilder extends AbstractXmlBuilder{
 		stringBuffer.append(TAG_END_PREFIX).append(tagName).append(TAG_SUFFIX);
 	}
 	
-	void insertHeadTag(final StringBuffer stringBuffer,String tagName){
+	private void insertHeadTag(final StringBuffer stringBuffer,String tagName){
 		stringBuffer.append(TAG_HEAD_PREFIX).append(tagName).append(TAG_SUFFIX);
 	}
 	
-	void insertEndTag(final StringBuffer stringBuffer,String tagName){
+	private void insertEndTag(final StringBuffer stringBuffer,String tagName){
 		stringBuffer.append(TAG_END_PREFIX).append(tagName).append(TAG_SUFFIX);
 	}
 	
-	void insertTab(final StringBuffer stringBuffer,int number){
+	private void insertTab(final StringBuffer stringBuffer,int number){
 		for (int i = 0; i < number; i++) {
 			stringBuffer.append(TAB);
 		}
 	}
 	
-	void insertLine(final StringBuffer stringBuffer){
+	private void insertLine(final StringBuffer stringBuffer){
 		stringBuffer.append(LINE);
 	}
 	
-	boolean needLine(Format format){
+	private void deleteLine(final StringBuffer stringBuffer){
+		if (stringBuffer.lastIndexOf(LINE) < 0 || stringBuffer.length() - stringBuffer.lastIndexOf(LINE) != LINE.length()) {
+			return;
+		}
+		stringBuffer.delete(stringBuffer.lastIndexOf(LINE), stringBuffer.length());
+	}
+	
+	private boolean needLine(Format format){
 		if (format.equals(Format.ONLY_LINE) || format.equals(Format.TAB_AND_LINE)) {
 			return true;
 		}
 		return false;
 	}
 	
-	boolean needTab(Format format){
+	private boolean needTab(Format format){
 		if (format.equals(Format.TAB_AND_LINE)) {
 			return true;
 		}
