@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>cn.zxl</groupId>
   <artifactId>xxoo</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>1.0.0.RELEASE</version>
   <name>xxoo</name>
   <description>This is a tool for transfer between xml and object</description>
 </project>
